@@ -1,7 +1,6 @@
-#include "Static/KCore/KCore.cuh"
+#include "Static/PCPM_PR/PCPM_PR.cuh"
 #include <Device/Util/Timer.cuh>
 #include <Graph/GraphStd.hpp>
-#include <Core/Queue/TwoLevelQueue.cuh>
 
 using namespace timer;
 using namespace hornets_nest;
@@ -18,8 +17,8 @@ int main(int argc, char **argv) {
 
     HornetGraph hornet_graph(hornet_init);
 
-    KCore kcore(hornet_graph);
+    PCPM_PR pcpmpr(hornet_graph);
 
-    kcore.run();
+    pcpmpr.run();
 
 }
