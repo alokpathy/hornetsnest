@@ -21,8 +21,11 @@ PCPM_PR::PCPM_PR(HornetGraph& hornet) :
         memset(hornet_csr_off[i], 0, (hornet.nV() + 1) * sizeof(vid_t));
     } 
 
-    std::cout << "nv: " << hornet.nV() << "\n";
-    gpu::allocate(pr, hornet.nV());
+    std::cout << "nv: " << hornet.nV() << " ne: " << hornet.nE() << "\n";
+    gpu::allocate(pr,                hornet.nV());
+    gpu::allocate(hd_data().src,     hornet.nE());
+    gpu::allocate(hd_data().dst,     hornet.nE());
+    gpu::allocate(hd_data().counter, sizeofik);
 }
 
 struct FindNeighbors {
@@ -118,6 +121,8 @@ void PCPM_PR::run() {
     for (uint32_t i = 0; i < NUM_PARTS; i++) {
         uint32_t start_vertex = i * vertices_per_part;
         uint32_t end_vertex = (i + 1) * vertices_per_part;
+
+        std::cout << "start " << start_vertex << " end " << end_vertex << "\n";
         if (end_vertex > hornet.nV()) {
             end_vertex = hornet.nV();
         }
@@ -132,13 +137,21 @@ void PCPM_PR::run() {
         src_equeue.swap();
         dst_equeue.swap();
 
+        src_equeue.print();
+        dst_equeue.print();
+
+        std::cout << "src_equeue size " << src_equeue.size() << std::endl;
+        std::cout << "dst_equeue size " << dst_equeue.size() << std::endl;
+
         gpu::BatchUpdate batch_update_src(
                            (vid_t*) src_equeue.device_input_ptr(),
                            (vid_t*) dst_equeue.device_input_ptr(),
                                     src_equeue.size());
 
 
+        std::cout << "before" << std::endl;
         hornets[i]->insertEdgeBatch(batch_update_src);
+        std::cout << "after" << std::endl;
         vqueue.swap();
         src_equeue.swap();
         dst_equeue.swap();

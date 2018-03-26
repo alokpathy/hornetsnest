@@ -21,6 +21,12 @@ struct MsgData {
     vid_t dst;
 };
 
+struct PR_DATA {
+    vid_t *src;
+    vid_t *dst;
+    vid_t *counter;
+};
+
 class PCPM_PR : public StaticAlgorithm<HornetGraph> {
 public:
     PCPM_PR(HornetGraph& hornet);
@@ -32,7 +38,7 @@ public:
     bool validate() override { return true; }
 
 private:
-    // HostDeviceVar<KCoreData> hd_data;
+    HostDeviceVar<PR_DATA> hd_data;
 
     //load_balancing::BinarySearch load_balancing;
 
@@ -40,8 +46,8 @@ private:
     vid_t *hornet_csr_edges[NUM_PARTS];
 
     TwoLevelQueue<vid_t> vqueue;
-    TwoLevelQueue<vid_t> src_equeue;
-    TwoLevelQueue<vid_t> dst_equeue;
+    // TwoLevelQueue<vid_t> src_equeue;
+    // TwoLevelQueue<vid_t> dst_equeue;
 
     float *pr;
 
