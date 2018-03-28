@@ -17,14 +17,16 @@ namespace hornets_nest {
 using HornetGraph = gpu::Hornet<EMPTY, EMPTY>;
 
 struct MsgData {
-    float val;
-    vid_t dst;
 };
 
 struct PR_DATA {
     vid_t *src;
     vid_t *dst;
-    vid_t *counter;
+    int   *counter;
+
+    float **val;
+    vid_t **dstid;
+    int   *msg_counter;
 };
 
 class PCPM_PR : public StaticAlgorithm<HornetGraph> {
