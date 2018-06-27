@@ -28,6 +28,7 @@ public:
 
     void reset()    override;
     void run()      override;
+    void old_run();     
     void release()  override;
     bool validate() override { return true; }
     void set_hcopy(HornetGraph *h_copy);
@@ -43,6 +44,8 @@ private:
     // TwoLevelQueue<vid_t> src_equeue;
     // TwoLevelQueue<vid_t> dst_equeue;
     TwoLevelQueue<vid_t> peel_vqueue;
+    TwoLevelQueue<vid_t> active_queue;
+    TwoLevelQueue<vid_t> iter_queue;
     // TwoLevelQueue<vid_t> tot_src_equeue;
     // TwoLevelQueue<vid_t> tot_dst_equeue;
 
@@ -51,7 +54,7 @@ private:
     vid_t *vertex_subg { nullptr };
     vid_t *h_copy_csr_off { nullptr };
     vid_t *h_copy_csr_edges { nullptr };
-    gpu::BatchUpdate batch_update;
+    vid_t *vertex_deg { nullptr };
 
     // HostDeviceVar<KCoreData> hd_data;
     // MultiLevelQueue<vid_t> nodes_removed;

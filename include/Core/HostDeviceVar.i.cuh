@@ -70,6 +70,7 @@ void HostDeviceVar<T>::sync() noexcept {
 #if defined(__CUDA_ARCH__)
     *_d_value_ptr = _value;
 #else
+    printf("hereee\n");
     cuMemcpyToHost(_d_value_ptr, _value);
 #endif
 }
