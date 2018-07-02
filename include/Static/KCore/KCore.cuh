@@ -28,7 +28,6 @@ public:
 
     void reset()    override;
     void run()      override;
-    void old_run();     
     void release()  override;
     bool validate() override { return true; }
     void set_hcopy(HornetGraph *h_copy);

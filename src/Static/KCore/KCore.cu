@@ -10,6 +10,7 @@
 // #define NVTX_DEBUG
 
 #define NEW_KCORE
+#define SHELL
 
 // #include <Device/Primitives/CubWrapper.cuh>
 
@@ -297,6 +298,42 @@ struct ExtractSubgraph {
     }
 };
 
+struct GetDegOne {
+    TwoLevelQueue<vid_t> vqueue;
+    vid_t *vertex_color;
+
+    OPERATOR(Vertex &v) {
+        vid_t id = v.id();
+        if (v.degree() == 1) {
+            vqueue.insert(id);
+            vertex_color[id] = 1;
+        }
+    }
+};
+
+struct DegOneEdges {
+    HostDeviceVar<KCoreData> hd;
+    vid_t *vertex_color;
+
+    OPERATOR(Vertex &v, Edge &e) {
+        vid_t src = v.id();
+        vid_t dst = e.dst_id();
+
+        // if (v.degree() == 1) {
+        if (vertex_color[src] || vertex_color[dst]) {
+            int spot = atomicAdd(hd().counter, 1);
+            hd().src[spot] = src;
+            hd().dst[spot] = dst;
+
+            if (!vertex_color[src] || !vertex_color[dst]) {
+                int spot_rev = atomicAdd(hd().counter, 1);
+                hd().src[spot_rev] = dst;
+                hd().dst[spot_rev] = src;
+            }
+        }
+    }
+};
+
 void KCore::reset() {
     std::cout << "ran1" << std::endl;
 }
@@ -506,11 +543,8 @@ void json_dump(vid_t *src, vid_t *dst, uint32_t *peel, uint32_t peel_edges) {
     output_file.close();
 }
 
-#if !defined NEW_KCORE
+#if !defined SHELL && !defined NEW_KCORE
 void KCore::run() {
-#else
-void KCore::old_run() {
-#endif
 
     omp_set_num_threads(72);
     vid_t *src     = new vid_t[hornet.nE() / 2 + 1];
@@ -615,12 +649,10 @@ void KCore::old_run() {
 
     json_dump(src, dst, peel, peel_edges);
 }
-
-#if defined NEW_KCORE
-void KCore::run() {
-#else
-void KCore::old_run() {
 #endif
+
+#if !defined SHELL && defined NEW_KCORE
+void KCore::run() {
     omp_set_num_threads(72);
     vid_t *src     = new vid_t[hornet.nE()];
     vid_t *dst     = new vid_t[hornet.nE()];
@@ -628,15 +660,46 @@ void KCore::old_run() {
     uint32_t *peel = new uint32_t[hornet.nE()];
     uint32_t peel_edges = 0;
     uint32_t ne = hornet.nE();
+    std::cout << "ne: " << ne << "\n";
 
     auto pres = vertex_pres;
     auto deg = vertex_deg;
+    auto color = vertex_color;
     
     forAllnumV(hornet, [=] __device__ (int i){ pres[i] = 0; } );
     forAllnumV(hornet, [=] __device__ (int i){ deg[i] = 0; } );
+    forAllnumV(hornet, [=] __device__ (int i){ color[i] = 0; } );
 
     Timer<DEVICE> TM;
     TM.start();
+
+    // Find vertices of degree 1.
+    forAllVertices(hornet, GetDegOne { vqueue, vertex_color });
+    vqueue.swap();
+    // std::cout << "size: " << vqueue.size() << "\n";
+    // Find the edges incident to these vertices.
+    gpu::memsetZero(hd_data().counter);  // reset counter. 
+    forAllEdges(hornet, vqueue, 
+                    DegOneEdges { hd_data, vertex_color }, load_balancing);
+    // Mark edges with peel 1.
+    int peel_one_count = 0;
+    cudaMemcpy(&peel_one_count, hd_data().counter, sizeof(int), cudaMemcpyDeviceToHost);
+    #pragma omp parallel for
+    for (uint32_t i = 0; i < peel_one_count; i++) {
+        peel[i] = 1;
+    }
+
+    cudaMemcpy(src, hd_data().src, peel_one_count * sizeof(vid_t), 
+                    cudaMemcpyDeviceToHost);
+    cudaMemcpy(dst, hd_data().dst, peel_one_count * sizeof(vid_t), 
+                    cudaMemcpyDeviceToHost);
+
+    peel_edges = (uint32_t)peel_one_count;
+
+    // Delete peel 1 edges.
+    oper_bidirect_batch(hornet, hd_data().src, hd_data().dst, peel_one_count, DELETE);
+
+    // Find all vertices of degree 1.
     while (peel_edges < ne) {
         // std::cout << "peel edges: " << peel_edges << std::endl;
         uint32_t max_peel = 0;
@@ -665,7 +728,7 @@ void KCore::old_run() {
     TM.print("KCore");
     json_dump(src, dst, peel, peel_edges);
 }
-
+#endif
 
 void KCore::release() {
     std::cout << "ran3" << std::endl;
