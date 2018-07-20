@@ -6,6 +6,8 @@
 using namespace timer;
 using namespace hornets_nest;
 
+// #define OLD_KCORE
+
 int main(int argc, char **argv) {
     using namespace graph::structure_prop;
     using namespace graph::parsing_prop;
@@ -17,11 +19,14 @@ int main(int argc, char **argv) {
                            graph.csr_out_edges(), true);
 
     HornetGraph hornet_graph(hornet_init);
+#ifdef OLD_KCORE
     HornetGraph h_copy(hornet_init);
+#endif
 
     KCore kcore(hornet_graph);
-
+#ifdef OLD_KCORE
     kcore.set_hcopy(&h_copy);
+#endif
     kcore.run();
 
 }

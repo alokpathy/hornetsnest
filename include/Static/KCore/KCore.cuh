@@ -51,6 +51,7 @@ private:
     vid_t *vertex_pres { nullptr };
     vid_t *vertex_color { nullptr };
     vid_t *vertex_subg { nullptr };
+    vid_t *vertex_shell { nullptr };
     vid_t *h_copy_csr_off { nullptr };
     vid_t *h_copy_csr_edges { nullptr };
     vid_t *vertex_deg { nullptr };
